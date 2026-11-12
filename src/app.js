@@ -114,20 +114,37 @@ export default function App() {
 							) }
 						</p>
 					) : (
-						modules.map( ( module ) => (
-							<div
-								key={ module.id }
-								className="wppdt-module-row"
-							>
-								<ToggleControl
-									__nextHasNoMarginBottom
-									label={ module.label }
-									help={ module.description }
-									checked={ enabled.includes( module.id ) }
-									onChange={ () => toggle( module.id ) }
-								/>
-							</div>
-						) )
+						modules.map( ( module ) => {
+							const isAvailable = module.available !== false;
+							const helpText = isAvailable
+								? module.description
+								: `${ module.description } (${ __(
+										'Requires',
+										'wp-pro-devs-toolkit'
+								  ) } ${ module.requires } — ${ __(
+										'not active',
+										'wp-pro-devs-toolkit'
+								  ) })`;
+
+							return (
+								<div
+									key={ module.id }
+									className="wppdt-module-row"
+								>
+									<ToggleControl
+										__nextHasNoMarginBottom
+										label={ module.label }
+										help={ helpText }
+										checked={
+											isAvailable &&
+											enabled.includes( module.id )
+										}
+										disabled={ ! isAvailable }
+										onChange={ () => toggle( module.id ) }
+									/>
+								</div>
+							);
+						} )
 					) }
 				</CardBody>
 

@@ -2,7 +2,7 @@
 /**
  * MCP tool registry (group-aware).
  *
- * Tools are organized into groups (WordPress Core, Elementor, SCF/ACF, Contact
+ * Tools are organized into groups (WordPress Core, Elementor, ACF, Contact
  * Form 7, Gravity Forms, ...). A tool is only exposed when its group is both
  * available (the required plugin is active) and enabled (toggled on by an
  * admin).

@@ -111,10 +111,13 @@ class WPPDT_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function get_settings() {
+		$available = $this->available_ids();
+		$enabled   = array_values( array_intersect( $this->modules->get_enabled(), $available ) );
+
 		return rest_ensure_response(
 			array(
 				'modules' => $this->module_list(),
-				'enabled' => $this->modules->get_enabled(),
+				'enabled' => $enabled,
 			)
 		);
 	}
@@ -128,9 +131,9 @@ class WPPDT_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function update_settings( WP_REST_Request $request ) {
-		$registered = array_keys( $this->modules->get_registered() );
-		$submitted  = (array) $request->get_param( 'enabled' );
-		$enabled    = array_values( array_intersect( $registered, $submitted ) );
+		$available = $this->available_ids();
+		$submitted = (array) $request->get_param( 'enabled' );
+		$enabled   = array_values( array_intersect( $available, $submitted ) );
 
 		update_option( WPPDT_Modules::OPTION, $enabled );
 
@@ -141,6 +144,25 @@ class WPPDT_REST_Controller {
 				'saved'   => true,
 			)
 		);
+	}
+
+	/**
+	 * Returns the IDs of all registered modules whose dependencies are active.
+	 *
+	 * @since 1.0.2
+	 *
+	 * @return string[]
+	 */
+	private function available_ids() {
+		$ids = array();
+
+		foreach ( array_keys( $this->modules->get_registered() ) as $id ) {
+			if ( $this->modules->is_available( $id ) ) {
+				$ids[] = $id;
+			}
+		}
+
+		return $ids;
 	}
 
 	/**
@@ -158,6 +180,8 @@ class WPPDT_REST_Controller {
 				'id'          => $id,
 				'label'       => isset( $args['label'] ) ? $args['label'] : $id,
 				'description' => isset( $args['description'] ) ? $args['description'] : '',
+				'available'   => $this->modules->is_available( $id ),
+				'requires'    => isset( $args['requires'] ) ? $args['requires'] : '',
 			);
 		}
 

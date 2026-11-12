@@ -57,16 +57,24 @@ class WPPDT_Modules {
 	private function register_modules() {
 		$modules = array(
 			'wpvivid-subfolders'     => array(
-				'label'       => __( 'WPVivid Backup Subfolders', 'wp-pro-devs-toolkit' ),
-				'description' => __( 'Organize WPVivid remote backups into a per-site subfolder named after your site domain (e.g. wpvivid_backup/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, FTP and SFTP storage.', 'wp-pro-devs-toolkit' ),
-				'file'        => WPPDT_PLUGIN_DIR . 'modules/wpvivid-subfolders/class-wppdt-wpvivid-subfolders.php',
-				'class'       => 'WPPDT_WPVivid_Subfolders',
+				'label'        => __( 'WPVivid Backup Subfolders', 'wp-pro-devs-toolkit' ),
+				'description'  => __( 'Organize WPVivid remote backups into a per-site subfolder named after your site domain (e.g. wpvivid_backup/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, FTP and SFTP storage.', 'wp-pro-devs-toolkit' ),
+				'file'         => WPPDT_PLUGIN_DIR . 'modules/wpvivid-subfolders/class-wppdt-wpvivid-subfolders.php',
+				'class'        => 'WPPDT_WPVivid_Subfolders',
+				'requires'     => __( 'WPvivid Backup Plugin', 'wp-pro-devs-toolkit' ),
+				'is_available' => static function () {
+					return defined( 'WPVIVID_PLUGIN_VERSION' ) || class_exists( 'WPvivid' );
+				},
 			),
 			'updraftplus-subfolders' => array(
-				'label'       => __( 'UpdraftPlus Backup Subfolders', 'wp-pro-devs-toolkit' ),
-				'description' => __( 'Organize UpdraftPlus remote backups into a per-site subfolder named after your site domain (e.g. UpdraftPlus/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, DreamObjects, FTP, SFTP and WebDAV storage.', 'wp-pro-devs-toolkit' ),
-				'file'        => WPPDT_PLUGIN_DIR . 'modules/updraftplus-subfolders/class-wppdt-updraftplus-subfolders.php',
-				'class'       => 'WPPDT_UpdraftPlus_Subfolders',
+				'label'        => __( 'UpdraftPlus Backup Subfolders', 'wp-pro-devs-toolkit' ),
+				'description'  => __( 'Organize UpdraftPlus remote backups into a per-site subfolder named after your site domain (e.g. UpdraftPlus/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, DreamObjects, FTP, SFTP and WebDAV storage.', 'wp-pro-devs-toolkit' ),
+				'file'         => WPPDT_PLUGIN_DIR . 'modules/updraftplus-subfolders/class-wppdt-updraftplus-subfolders.php',
+				'class'        => 'WPPDT_UpdraftPlus_Subfolders',
+				'requires'     => __( 'UpdraftPlus - Backup/Restore', 'wp-pro-devs-toolkit' ),
+				'is_available' => static function () {
+					return defined( 'UPDRAFTPLUS_DIR' ) || class_exists( 'UpdraftPlus' );
+				},
 			),
 			'mcp-server'             => array(
 				'label'       => __( 'MCP Server', 'wp-pro-devs-toolkit' ),
@@ -111,7 +119,29 @@ class WPPDT_Modules {
 	}
 
 	/**
-	 * Determines whether a module is enabled.
+	 * Determines whether a module's required dependency is active.
+	 *
+	 * @since 1.0.2
+	 *
+	 * @param string $id Module ID.
+	 * @return bool
+	 */
+	public function is_available( $id ) {
+		if ( ! isset( $this->registered[ $id ] ) ) {
+			return false;
+		}
+
+		$args = $this->registered[ $id ];
+
+		if ( isset( $args['is_available'] ) && is_callable( $args['is_available'] ) ) {
+			return (bool) call_user_func( $args['is_available'] );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Determines whether a module is enabled and its dependency is available.
 	 *
 	 * @since 1.0.0
 	 *
@@ -119,7 +149,7 @@ class WPPDT_Modules {
 	 * @return bool
 	 */
 	public function is_enabled( $id ) {
-		return in_array( $id, $this->get_enabled(), true );
+		return $this->is_available( $id ) && in_array( $id, $this->get_enabled(), true );
 	}
 
 	/**

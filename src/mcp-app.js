@@ -138,6 +138,8 @@ export default function McpApp() {
 				</Notice>
 			) }
 
+			<div className="wppdt-mcp-cols">
+			<div className="wppdt-mcp-main">
 			<Card>
 				<CardHeader>
 					<h2 className="wppdt-card-title">{ __( 'Server', 'wp-pro-devs-toolkit' ) }</h2>
@@ -231,6 +233,8 @@ export default function McpApp() {
 				</CardBody>
 			</Card>
 
+			</div>
+			<div className="wppdt-mcp-side">
 			<Card>
 				<CardHeader>
 					<h2 className="wppdt-card-title">{ __( 'Recent activity', 'wp-pro-devs-toolkit' ) }</h2>
@@ -251,6 +255,8 @@ export default function McpApp() {
 					) }
 				</CardBody>
 			</Card>
+			</div>
+			</div>
 
 			<p className="wppdt-mcp-docs">
 				<ExternalLink href="https://modelcontextprotocol.io">
