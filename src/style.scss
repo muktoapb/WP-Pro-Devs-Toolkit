@@ -1,0 +1,39 @@
+.wppdt-admin {
+	max-width: 820px;
+	margin-top: 20px;
+
+	.components-notice {
+		margin: 0 0 16px;
+	}
+
+	.wppdt-card-title {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 600;
+	}
+
+	.wppdt-module-row {
+		padding: 16px 0;
+		border-bottom: 1px solid #f0f0f1;
+
+		&:first-child {
+			padding-top: 0;
+		}
+
+		&:last-child {
+			padding-bottom: 0;
+			border-bottom: none;
+		}
+	}
+
+	.wppdt-empty {
+		margin: 0;
+		color: #646970;
+	}
+}
+
+.wppdt-loading {
+	display: flex;
+	justify-content: center;
+	padding: 60px 0;
+}

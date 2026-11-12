@@ -1,0 +1,16 @@
+# Dependencies (installed via `npm install`, never committed)
+node_modules/
+
+# Build tooling caches and logs
+.cache/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Note: build/ IS committed — the compiled admin assets ship with the plugin.

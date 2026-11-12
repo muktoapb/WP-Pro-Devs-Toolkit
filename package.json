@@ -1,0 +1,16 @@
+{
+	"name": "wp-pro-devs-toolkit",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Admin interface for the WP Pro Devs Toolkit plugin.",
+	"author": "Mukto",
+	"license": "GPL-2.0-or-later",
+	"scripts": {
+		"build": "wp-scripts build",
+		"start": "wp-scripts start",
+		"lint:js": "wp-scripts lint-js src"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^30.0.0"
+	}
+}
