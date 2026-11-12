@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once dirname( __FILE__ ) . '/class-wppdt-mcp-tool-group.php';
 require_once dirname( __FILE__ ) . '/class-wppdt-mcp-groups.php';
+require_once dirname( __FILE__ ) . '/class-wppdt-mcp-admin-groups.php';
 
 /**
  * Registers tool groups and executes calls.
@@ -63,6 +64,9 @@ class WPPDT_MCP_Tools {
 			new WPPDT_MCP_Group_ACF(),
 			new WPPDT_MCP_Group_CF7(),
 			new WPPDT_MCP_Group_GravityForms(),
+			new WPPDT_MCP_Group_Files(),
+			new WPPDT_MCP_Group_Site(),
+			new WPPDT_MCP_Group_Users(),
 		);
 
 		/**
