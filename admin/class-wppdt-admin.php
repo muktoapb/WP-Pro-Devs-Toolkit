@@ -108,6 +108,21 @@ class WPPDT_Admin {
 			return;
 		}
 
+		self::enqueue_app();
+	}
+
+	/**
+	 * Enqueues the shared React admin bundle.
+	 *
+	 * Reused by module submenus (e.g. the MCP Server screen) so every toolkit
+	 * admin page runs the same compiled app, which mounts the right view based
+	 * on the root element present on the page.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return void
+	 */
+	public static function enqueue_app() {
 		$asset_file = WPPDT_PLUGIN_DIR . 'build/index.asset.php';
 
 		if ( ! file_exists( $asset_file ) ) {

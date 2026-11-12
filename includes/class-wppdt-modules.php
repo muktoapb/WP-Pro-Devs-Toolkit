@@ -62,6 +62,12 @@ class WPPDT_Modules {
 				'file'        => WPPDT_PLUGIN_DIR . 'modules/wpvivid-subfolders/class-wppdt-wpvivid-subfolders.php',
 				'class'       => 'WPPDT_WPVivid_Subfolders',
 			),
+			'mcp-server'         => array(
+				'label'       => __( 'MCP Server', 'wp-pro-devs-toolkit' ),
+				'description' => __( 'Expose this site to AI assistants (Claude, ChatGPT, scripts) over the Model Context Protocol so they can manage content, Elementor layouts and more. Configure and switch it on under the MCP Server submenu.', 'wp-pro-devs-toolkit' ),
+				'file'        => WPPDT_PLUGIN_DIR . 'modules/mcp-server/class-wppdt-mcp-server.php',
+				'class'       => 'WPPDT_MCP_Server',
+			),
 		);
 
 		/**

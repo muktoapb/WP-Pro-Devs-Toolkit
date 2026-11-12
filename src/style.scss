@@ -37,3 +37,74 @@
 	justify-content: center;
 	padding: 60px 0;
 }
+
+.wppdt-mcp {
+	.components-card {
+		margin-bottom: 16px;
+	}
+
+	.wppdt-mcp-field {
+		margin-top: 16px;
+	}
+
+	.wppdt-mcp-actions {
+		display: flex;
+		gap: 8px;
+		margin-top: 12px;
+	}
+
+	.wppdt-mcp-token {
+		display: block;
+		margin-top: 8px;
+		padding: 8px;
+		background: #fff;
+		border: 1px solid #c3c4c7;
+		border-radius: 3px;
+		word-break: break-all;
+		user-select: all;
+	}
+
+	.wppdt-mcp-tools {
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 10px;
+
+		li {
+			margin: 0;
+		}
+	}
+
+	.wppdt-mcp-audit {
+		margin: 0;
+
+		li {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 4px 12px;
+			padding: 6px 0;
+			border-bottom: 1px solid #f0f0f1;
+
+			&:last-child {
+				border-bottom: none;
+			}
+
+			&.is-error .wppdt-mcp-audit-tool code {
+				color: #b32d2e;
+			}
+		}
+
+		.wppdt-mcp-audit-time {
+			color: #646970;
+		}
+
+		.wppdt-mcp-audit-summary {
+			color: #646970;
+			flex-basis: 100%;
+		}
+	}
+
+	.wppdt-mcp-docs {
+		margin-top: 8px;
+	}
+}
