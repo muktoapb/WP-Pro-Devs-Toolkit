@@ -66,7 +66,7 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		require_once $this->dir . 'class-wppdt-mcp-tools.php';
 		require_once $this->dir . 'class-wppdt-mcp-protocol.php';
 
-		$this->tools = new WPPDT_MCP_Tools();
+		$this->build_tools();
 
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 11 );
@@ -100,6 +100,16 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		return $routes;
 	}
 
+	/**
+	 * Builds the tool registry from the current group settings.
+	 *
+	 * @return void
+	 */
+	private function build_tools() {
+		$settings     = $this->get_settings();
+		$this->tools  = new WPPDT_MCP_Tools( isset( $settings['tool_groups'] ) ? $settings['tool_groups'] : array() );
+	}
+
 	/* ---------------------------------------------------------------------
 	 * Settings
 	 * ------------------------------------------------------------------- */
@@ -116,6 +126,7 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 			'token_user'    => 0,
 			'token_created' => 0,
 			'token_last4'   => '',
+			'tool_groups'   => array(),
 		);
 
 		$stored = get_option( self::OPTION, array() );
@@ -283,6 +294,26 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 
 		register_rest_route(
 			self::REST_NAMESPACE,
+			'/mcp-admin/groups',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'admin_toggle_group' ),
+				'permission_callback' => $admin_perms,
+				'args'                => array(
+					'group'   => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'enabled' => array(
+						'type'     => 'boolean',
+						'required' => true,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::REST_NAMESPACE,
 			'/mcp-admin/token',
 			array(
 				array(
@@ -393,14 +424,13 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		$audit    = get_option( self::AUDIT_OPTION, array() );
 
 		return array(
-			'active'        => (bool) $settings['active'],
-			'hasToken'      => '' !== $settings['token_hash'],
-			'tokenLast4'    => $settings['token_last4'],
-			'tokenCreated'  => (int) $settings['token_created'],
-			'endpoint'      => $this->endpoint_url(),
-			'elementor'     => class_exists( '\\Elementor\\Plugin' ),
-			'tools'         => $this->tools ? $this->tools->get_names() : array(),
-			'audit'         => is_array( $audit ) ? array_slice( $audit, 0, 10 ) : array(),
+			'active'       => (bool) $settings['active'],
+			'hasToken'     => '' !== $settings['token_hash'],
+			'tokenLast4'   => $settings['token_last4'],
+			'tokenCreated' => (int) $settings['token_created'],
+			'endpoint'     => $this->endpoint_url(),
+			'groups'       => $this->tools ? $this->tools->get_groups_meta() : array(),
+			'audit'        => is_array( $audit ) ? array_slice( $audit, 0, 10 ) : array(),
 		);
 	}
 
@@ -423,6 +453,29 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		$settings           = $this->get_settings();
 		$settings['active'] = (bool) $request->get_param( 'active' );
 		update_option( self::OPTION, $settings );
+
+		return rest_ensure_response( $this->status_payload() );
+	}
+
+	/**
+	 * POST a tool-group toggle.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_REST_Response
+	 */
+	public function admin_toggle_group( WP_REST_Request $request ) {
+		$group   = sanitize_key( $request->get_param( 'group' ) );
+		$enabled = (bool) $request->get_param( 'enabled' );
+
+		$settings = $this->get_settings();
+		if ( ! isset( $settings['tool_groups'] ) || ! is_array( $settings['tool_groups'] ) ) {
+			$settings['tool_groups'] = array();
+		}
+		$settings['tool_groups'][ $group ] = $enabled;
+		update_option( self::OPTION, $settings );
+
+		// Rebuild so the response reflects the new state.
+		$this->build_tools();
 
 		return rest_ensure_response( $this->status_payload() );
 	}

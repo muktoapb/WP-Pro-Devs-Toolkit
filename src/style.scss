@@ -64,6 +64,16 @@
 		user-select: all;
 	}
 
+	.wppdt-mcp-group {
+		padding: 14px 0;
+		border-bottom: 1px solid #f0f0f1;
+
+		&:last-child {
+			padding-bottom: 0;
+			border-bottom: none;
+		}
+	}
+
 	.wppdt-mcp-tools {
 		margin: 0;
 		display: flex;

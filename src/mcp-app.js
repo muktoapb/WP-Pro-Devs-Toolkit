@@ -18,6 +18,7 @@ import {
 
 const SETTINGS = 'wppdt/v1/mcp-admin/settings';
 const TOKEN = 'wppdt/v1/mcp-admin/token';
+const GROUPS = 'wppdt/v1/mcp-admin/groups';
 
 function formatTime( ts ) {
 	if ( ! ts ) {
@@ -56,6 +57,20 @@ export default function McpApp() {
 				setNotice( {
 					status: 'error',
 					message: __( 'Could not update the server state.', 'wp-pro-devs-toolkit' ),
+				} )
+			)
+			.finally( () => setBusy( false ) );
+	};
+
+	const toggleGroup = ( id, enabled ) => {
+		setBusy( true );
+		setNotice( null );
+		apiFetch( { path: GROUPS, method: 'POST', data: { group: id, enabled } } )
+			.then( setStatus )
+			.catch( () =>
+				setNotice( {
+					status: 'error',
+					message: __( 'Could not update the tool group.', 'wp-pro-devs-toolkit' ),
 				} )
 			)
 			.finally( () => setBusy( false ) );
@@ -191,19 +206,28 @@ export default function McpApp() {
 
 			<Card>
 				<CardHeader>
-					<h2 className="wppdt-card-title">{ __( 'Available tools', 'wp-pro-devs-toolkit' ) }</h2>
+					<h2 className="wppdt-card-title">{ __( 'Tools', 'wp-pro-devs-toolkit' ) }</h2>
 				</CardHeader>
 				<CardBody>
 					<p className="wppdt-empty">
-						{ status.elementor
-							? __( 'Elementor detected — builder tools are enabled.', 'wp-pro-devs-toolkit' )
-							: __( 'Elementor not active — only content tools are available.', 'wp-pro-devs-toolkit' ) }
+						{ __( 'Turn tool groups on or off. A group whose plugin is not installed is disabled.', 'wp-pro-devs-toolkit' ) }
 					</p>
-					<ul className="wppdt-mcp-tools">
-						{ ( status.tools || [] ).map( ( tool ) => (
-							<li key={ tool }><code>{ tool }</code></li>
-						) ) }
-					</ul>
+					{ ( status.groups || [] ).map( ( group ) => (
+						<div key={ group.id } className="wppdt-mcp-group">
+							<ToggleControl
+								__nextHasNoMarginBottom
+								label={ group.label }
+								help={
+									group.available
+										? `${ group.tools.length } ${ __( 'tools', 'wp-pro-devs-toolkit' ) }: ${ group.tools.join( ', ' ) }`
+										: `${ __( 'Requires', 'wp-pro-devs-toolkit' ) } ${ group.requires } — ${ __( 'not active', 'wp-pro-devs-toolkit' ) }`
+								}
+								checked={ group.enabled }
+								disabled={ busy || ! group.available }
+								onChange={ ( value ) => toggleGroup( group.id, value ) }
+							/>
+						</div>
+					) ) }
 				</CardBody>
 			</Card>
 
