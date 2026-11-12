@@ -60,6 +60,7 @@ class WPPDT_MCP_Tools {
 	private function register_groups() {
 		$groups = array(
 			new WPPDT_MCP_Group_Core(),
+			new WPPDT_MCP_Group_Media(),
 			new WPPDT_MCP_Group_Elementor(),
 			new WPPDT_MCP_Group_ACF(),
 			new WPPDT_MCP_Group_CF7(),

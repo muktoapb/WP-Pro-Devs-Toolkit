@@ -367,6 +367,55 @@ class WPPDT_MCP_Group_Site extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'update_option' ),
 			),
+			'install_plugin'    => array(
+				'description' => 'Install a plugin from the WordPress.org directory (by "slug") or from a ZIP "url".',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'slug' => array( 'type' => 'string' ),
+						'url'  => array( 'type' => 'string' ),
+					),
+				),
+				'handler'     => array( $this, 'install_plugin' ),
+			),
+			'update_plugin'     => array(
+				'description' => 'Update an installed plugin to its latest version.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'plugin' => array( 'type' => 'string' ) ),
+					'required'   => array( 'plugin' ),
+				),
+				'handler'     => array( $this, 'update_plugin' ),
+			),
+			'delete_plugin'     => array(
+				'description' => 'Delete an installed plugin by its file path.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'plugin' => array( 'type' => 'string' ) ),
+					'required'   => array( 'plugin' ),
+				),
+				'handler'     => array( $this, 'delete_plugin' ),
+			),
+			'install_theme'     => array(
+				'description' => 'Install a theme from the WordPress.org directory (by "slug") or from a ZIP "url".',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'slug' => array( 'type' => 'string' ),
+						'url'  => array( 'type' => 'string' ),
+					),
+				),
+				'handler'     => array( $this, 'install_theme' ),
+			),
+			'update_theme'      => array(
+				'description' => 'Update an installed theme to its latest version.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'stylesheet' => array( 'type' => 'string' ) ),
+					'required'   => array( 'stylesheet' ),
+				),
+				'handler'     => array( $this, 'update_theme' ),
+			),
 		);
 	}
 
@@ -478,6 +527,143 @@ class WPPDT_MCP_Group_Site extends WPPDT_MCP_Tool_Group {
 			'name'    => $name,
 			'updated' => (bool) $updated,
 		);
+	}
+
+	/**
+	 * Loads the WordPress upgrader/installer API.
+	 *
+	 * @return void
+	 */
+	private function load_upgrader_api() {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+		require_once ABSPATH . 'wp-admin/includes/theme.php';
+		require_once ABSPATH . 'wp-admin/includes/theme-install.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		require_once ABSPATH . 'wp-admin/includes/class-automatic-upgrader-skin.php';
+	}
+
+	/**
+	 * Resolves a download URL from a slug (wp.org) or an explicit URL.
+	 *
+	 * @param array  $args Tool args.
+	 * @param string $type 'plugin' or 'theme'.
+	 * @return string|WP_Error
+	 */
+	private function resolve_package( $args, $type ) {
+		if ( ! empty( $args['url'] ) ) {
+			return esc_url_raw( $args['url'] );
+		}
+		$slug = isset( $args['slug'] ) ? sanitize_key( $args['slug'] ) : '';
+		if ( '' === $slug ) {
+			return new WP_Error( 'wppdt_mcp_missing_source', 'Provide a "slug" or a "url".' );
+		}
+
+		if ( 'plugin' === $type ) {
+			$info = plugins_api( 'plugin_information', array( 'slug' => $slug, 'fields' => array( 'sections' => false ) ) );
+		} else {
+			$info = themes_api( 'theme_information', array( 'slug' => $slug ) );
+		}
+		if ( is_wp_error( $info ) ) {
+			return $info;
+		}
+
+		return $info->download_link;
+	}
+
+	public function install_plugin( $args ) {
+		$this->load_upgrader_api();
+		$package = $this->resolve_package( $args, 'plugin' );
+		if ( is_wp_error( $package ) ) {
+			return $package;
+		}
+
+		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->install( $package );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( ! $result ) {
+			throw new RuntimeException( 'Plugin installation failed.' );
+		}
+
+		return array(
+			'installed' => true,
+			'plugin'    => $upgrader->plugin_info(),
+		);
+	}
+
+	public function update_plugin( $args ) {
+		$this->load_upgrader_api();
+		$plugin = isset( $args['plugin'] ) ? (string) $args['plugin'] : '';
+		if ( '' === $plugin ) {
+			throw new InvalidArgumentException( '"plugin" is required.' );
+		}
+
+		wp_update_plugins();
+		$upgrader = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->upgrade( $plugin );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'plugin' => $plugin, 'updated' => (bool) $result );
+	}
+
+	public function delete_plugin( $args ) {
+		$this->load_upgrader_api();
+		$plugin = isset( $args['plugin'] ) ? (string) $args['plugin'] : '';
+		if ( '' === $plugin ) {
+			throw new InvalidArgumentException( '"plugin" is required.' );
+		}
+
+		if ( is_plugin_active( $plugin ) ) {
+			deactivate_plugins( $plugin );
+		}
+		$result = delete_plugins( array( $plugin ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'plugin' => $plugin, 'deleted' => true );
+	}
+
+	public function install_theme( $args ) {
+		$this->load_upgrader_api();
+		$package = $this->resolve_package( $args, 'theme' );
+		if ( is_wp_error( $package ) ) {
+			return $package;
+		}
+
+		$upgrader = new Theme_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->install( $package );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( ! $result ) {
+			throw new RuntimeException( 'Theme installation failed.' );
+		}
+
+		return array( 'installed' => true, 'theme' => $upgrader->theme_info() ? $upgrader->theme_info()->get_stylesheet() : '' );
+	}
+
+	public function update_theme( $args ) {
+		$this->load_upgrader_api();
+		$stylesheet = isset( $args['stylesheet'] ) ? (string) $args['stylesheet'] : '';
+		if ( '' === $stylesheet ) {
+			throw new InvalidArgumentException( '"stylesheet" is required.' );
+		}
+
+		wp_update_themes();
+		$upgrader = new Theme_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->upgrade( $stylesheet );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'stylesheet' => $stylesheet, 'updated' => (bool) $result );
 	}
 }
 

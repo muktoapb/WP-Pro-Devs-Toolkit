@@ -65,6 +65,10 @@ class WPPDT_MCP_Group_Core extends WPPDT_MCP_Tool_Group {
 						'post_type' => array( 'type' => 'string', 'description' => 'post or page (or custom type). Default "post".' ),
 						'excerpt'   => array( 'type' => 'string' ),
 						'slug'      => array( 'type' => 'string' ),
+						'featured_media' => array( 'type' => 'integer', 'description' => 'Attachment ID for the featured image (0 to remove).' ),
+						'categories'     => array( 'type' => 'array', 'description' => 'Category names or IDs.' ),
+						'tags'           => array( 'type' => 'array', 'description' => 'Tag names or IDs.' ),
+						'meta'           => array( 'type' => 'object', 'description' => 'Custom field key/value pairs.' ),
 					),
 				),
 				'handler'     => array( $this, 'create_post' ),
@@ -80,6 +84,10 @@ class WPPDT_MCP_Group_Core extends WPPDT_MCP_Tool_Group {
 						'status'  => array( 'type' => 'string' ),
 						'excerpt' => array( 'type' => 'string' ),
 						'slug'    => array( 'type' => 'string' ),
+						'featured_media' => array( 'type' => 'integer' ),
+						'categories'     => array( 'type' => 'array' ),
+						'tags'           => array( 'type' => 'array' ),
+						'meta'           => array( 'type' => 'object' ),
 					),
 					'required'   => array( 'id' ),
 				),
@@ -97,7 +105,140 @@ class WPPDT_MCP_Group_Core extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'delete_post' ),
 			),
+			'set_featured_image' => array(
+				'description' => 'Set (or clear with attachment_id=0) the featured image of a post.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'            => array( 'type' => 'integer' ),
+						'attachment_id' => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'id', 'attachment_id' ),
+				),
+				'handler'     => array( $this, 'set_featured_image' ),
+			),
+			'list_terms'         => array(
+				'description' => 'List terms in a taxonomy (e.g. category, post_tag).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'taxonomy' => array( 'type' => 'string' ),
+						'search'   => array( 'type' => 'string' ),
+						'per_page' => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'taxonomy' ),
+				),
+				'handler'     => array( $this, 'list_terms' ),
+			),
+			'create_term'        => array(
+				'description' => 'Create a term (e.g. a category or tag).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'taxonomy' => array( 'type' => 'string' ),
+						'name'     => array( 'type' => 'string' ),
+						'parent'   => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'taxonomy', 'name' ),
+				),
+				'handler'     => array( $this, 'create_term' ),
+			),
+			'set_post_terms'     => array(
+				'description' => 'Assign terms (names or IDs) to a post in a taxonomy. Set append=true to add without removing existing.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'       => array( 'type' => 'integer' ),
+						'taxonomy' => array( 'type' => 'string' ),
+						'terms'    => array( 'type' => 'array' ),
+						'append'   => array( 'type' => 'boolean' ),
+					),
+					'required'   => array( 'id', 'taxonomy', 'terms' ),
+				),
+				'handler'     => array( $this, 'set_post_terms' ),
+			),
 		);
+	}
+
+	public function set_featured_image( $args ) {
+		$id = $this->require_id( $args );
+		if ( ! get_post( $id ) ) {
+			throw new RuntimeException( sprintf( 'Post %d not found.', $id ) );
+		}
+		$att = isset( $args['attachment_id'] ) ? absint( $args['attachment_id'] ) : 0;
+		if ( $att ) {
+			set_post_thumbnail( $id, $att );
+		} else {
+			delete_post_thumbnail( $id );
+		}
+
+		return array( 'id' => $id, 'featured_media' => $att );
+	}
+
+	public function list_terms( $args ) {
+		$taxonomy = isset( $args['taxonomy'] ) ? sanitize_key( $args['taxonomy'] ) : '';
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			throw new RuntimeException( 'Unknown taxonomy: ' . $taxonomy );
+		}
+		$query = array(
+			'taxonomy'   => $taxonomy,
+			'hide_empty' => false,
+			'number'     => isset( $args['per_page'] ) ? min( 200, max( 1, absint( $args['per_page'] ) ) ) : 100,
+		);
+		if ( ! empty( $args['search'] ) ) {
+			$query['search'] = sanitize_text_field( $args['search'] );
+		}
+
+		$terms = array();
+		foreach ( get_terms( $query ) as $term ) {
+			$terms[] = array(
+				'id'     => (int) $term->term_id,
+				'name'   => $term->name,
+				'slug'   => $term->slug,
+				'parent' => (int) $term->parent,
+				'count'  => (int) $term->count,
+			);
+		}
+
+		return array( 'taxonomy' => $taxonomy, 'terms' => $terms );
+	}
+
+	public function create_term( $args ) {
+		$taxonomy = isset( $args['taxonomy'] ) ? sanitize_key( $args['taxonomy'] ) : '';
+		$name     = isset( $args['name'] ) ? sanitize_text_field( $args['name'] ) : '';
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			throw new RuntimeException( 'Unknown taxonomy: ' . $taxonomy );
+		}
+		if ( '' === $name ) {
+			throw new InvalidArgumentException( '"name" is required.' );
+		}
+
+		$result = wp_insert_term( $name, $taxonomy, array( 'parent' => isset( $args['parent'] ) ? absint( $args['parent'] ) : 0 ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'id' => (int) $result['term_id'], 'taxonomy' => $taxonomy, 'name' => $name );
+	}
+
+	public function set_post_terms( $args ) {
+		$id = $this->require_id( $args );
+		if ( ! get_post( $id ) ) {
+			throw new RuntimeException( sprintf( 'Post %d not found.', $id ) );
+		}
+		$taxonomy = isset( $args['taxonomy'] ) ? sanitize_key( $args['taxonomy'] ) : '';
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			throw new RuntimeException( 'Unknown taxonomy: ' . $taxonomy );
+		}
+		$terms  = isset( $args['terms'] ) && is_array( $args['terms'] ) ? $args['terms'] : array();
+		$append = ! empty( $args['append'] );
+
+		$result = wp_set_post_terms( $id, $this->resolve_term_ids( $terms, $taxonomy ), $taxonomy, $append );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'id' => $id, 'taxonomy' => $taxonomy, 'terms' => array_map( 'intval', (array) $result ) );
 	}
 
 	public function list_posts( $args ) {
@@ -180,12 +321,75 @@ class WPPDT_MCP_Group_Core extends WPPDT_MCP_Tool_Group {
 			return $id;
 		}
 
+		$this->apply_extras( $id, $args );
+
 		return array(
 			'id'        => $id,
 			'status'    => get_post_status( $id ),
 			'link'      => get_permalink( $id ),
 			'edit_link' => get_edit_post_link( $id, 'raw' ),
 		);
+	}
+
+	/**
+	 * Applies optional post extras: featured image, categories, tags and meta.
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param array $args    Tool arguments.
+	 * @return void
+	 */
+	private function apply_extras( $post_id, $args ) {
+		if ( array_key_exists( 'featured_media', $args ) ) {
+			$att = absint( $args['featured_media'] );
+			if ( $att ) {
+				set_post_thumbnail( $post_id, $att );
+			} else {
+				delete_post_thumbnail( $post_id );
+			}
+		}
+		if ( isset( $args['categories'] ) && is_array( $args['categories'] ) ) {
+			wp_set_post_terms( $post_id, $this->resolve_term_ids( $args['categories'], 'category' ), 'category', false );
+		}
+		if ( isset( $args['tags'] ) && is_array( $args['tags'] ) ) {
+			wp_set_post_terms( $post_id, $this->resolve_term_ids( $args['tags'], 'post_tag' ), 'post_tag', false );
+		}
+		if ( isset( $args['meta'] ) && is_array( $args['meta'] ) ) {
+			foreach ( $args['meta'] as $key => $value ) {
+				update_post_meta( $post_id, (string) $key, $value );
+			}
+		}
+	}
+
+	/**
+	 * Resolves a list of term names or IDs to term IDs, creating missing terms.
+	 *
+	 * Hierarchical taxonomies (e.g. category) require IDs, so names must be
+	 * resolved up front rather than passed to wp_set_post_terms().
+	 *
+	 * @param array  $terms    Term names or IDs.
+	 * @param string $taxonomy Taxonomy.
+	 * @return int[]
+	 */
+	private function resolve_term_ids( $terms, $taxonomy ) {
+		$ids = array();
+		foreach ( (array) $terms as $term ) {
+			if ( is_numeric( $term ) ) {
+				$ids[] = (int) $term;
+				continue;
+			}
+			$name     = (string) $term;
+			$existing = get_term_by( 'name', $name, $taxonomy );
+			if ( $existing ) {
+				$ids[] = (int) $existing->term_id;
+			} else {
+				$new = wp_insert_term( $name, $taxonomy );
+				if ( ! is_wp_error( $new ) ) {
+					$ids[] = (int) $new['term_id'];
+				}
+			}
+		}
+
+		return $ids;
 	}
 
 	public function update_post( $args ) {
@@ -215,6 +419,8 @@ class WPPDT_MCP_Group_Core extends WPPDT_MCP_Tool_Group {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+
+		$this->apply_extras( $id, $args );
 
 		return array(
 			'id'     => $id,
@@ -688,5 +894,173 @@ class WPPDT_MCP_Group_GravityForms extends WPPDT_MCP_Tool_Group {
 		}
 
 		return $entry;
+	}
+}
+
+/**
+ * Media library.
+ *
+ * @since 1.4.0
+ */
+class WPPDT_MCP_Group_Media extends WPPDT_MCP_Tool_Group {
+
+	public function id() {
+		return 'media';
+	}
+
+	public function label() {
+		return __( 'Media Library', 'wp-pro-devs-toolkit' );
+	}
+
+	public function is_available() {
+		return true;
+	}
+
+	public function tools() {
+		return array(
+			'upload_media' => array(
+				'description' => 'Download an image/file from a URL into the media library. Optionally attach it to a post and set alt text.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'url'      => array( 'type' => 'string' ),
+						'filename' => array( 'type' => 'string' ),
+						'alt'      => array( 'type' => 'string' ),
+						'post_id'  => array( 'type' => 'integer', 'description' => 'Attach the upload to this post.' ),
+					),
+					'required'   => array( 'url' ),
+				),
+				'handler'     => array( $this, 'upload_media' ),
+			),
+			'list_media'   => array(
+				'description' => 'List media library attachments.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'search'   => array( 'type' => 'string' ),
+						'per_page' => array( 'type' => 'integer' ),
+						'page'     => array( 'type' => 'integer' ),
+					),
+				),
+				'handler'     => array( $this, 'list_media' ),
+			),
+			'get_media'    => array(
+				'description' => 'Get a media attachment by ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'get_media' ),
+			),
+			'delete_media' => array(
+				'description' => 'Delete a media attachment.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'    => array( 'type' => 'integer' ),
+						'force' => array( 'type' => 'boolean' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_media' ),
+			),
+		);
+	}
+
+	public function upload_media( $args ) {
+		$url = isset( $args['url'] ) ? esc_url_raw( $args['url'] ) : '';
+		if ( '' === $url ) {
+			throw new InvalidArgumentException( '"url" is required.' );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$tmp = download_url( $url );
+		if ( is_wp_error( $tmp ) ) {
+			return $tmp;
+		}
+
+		$name = ! empty( $args['filename'] ) ? sanitize_file_name( $args['filename'] ) : basename( wp_parse_url( $url, PHP_URL_PATH ) );
+		if ( '' === $name ) {
+			$name = 'upload';
+		}
+
+		$file_array = array(
+			'name'     => $name,
+			'tmp_name' => $tmp,
+		);
+
+		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : 0;
+		$id      = media_handle_sideload( $file_array, $post_id );
+
+		if ( is_wp_error( $id ) ) {
+			@unlink( $tmp );
+			return $id;
+		}
+
+		if ( ! empty( $args['alt'] ) ) {
+			update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $args['alt'] ) );
+		}
+
+		return array(
+			'id'  => (int) $id,
+			'url' => wp_get_attachment_url( $id ),
+		);
+	}
+
+	public function list_media( $args ) {
+		$query = array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'posts_per_page' => isset( $args['per_page'] ) ? min( 100, max( 1, absint( $args['per_page'] ) ) ) : 20,
+			'paged'          => isset( $args['page'] ) ? max( 1, absint( $args['page'] ) ) : 1,
+		);
+		if ( ! empty( $args['search'] ) ) {
+			$query['s'] = sanitize_text_field( $args['search'] );
+		}
+
+		$items = array();
+		foreach ( get_posts( $query ) as $att ) {
+			$items[] = array(
+				'id'        => $att->ID,
+				'title'     => $att->post_title,
+				'mime_type' => $att->post_mime_type,
+				'url'       => wp_get_attachment_url( $att->ID ),
+			);
+		}
+
+		return array( 'media' => $items );
+	}
+
+	public function get_media( $args ) {
+		$id  = $this->require_id( $args );
+		$att = get_post( $id );
+		if ( ! $att || 'attachment' !== $att->post_type ) {
+			throw new RuntimeException( 'Attachment not found.' );
+		}
+
+		return array(
+			'id'        => $att->ID,
+			'title'     => $att->post_title,
+			'mime_type' => $att->post_mime_type,
+			'url'       => wp_get_attachment_url( $id ),
+			'alt'       => get_post_meta( $id, '_wp_attachment_image_alt', true ),
+			'parent'    => (int) $att->post_parent,
+		);
+	}
+
+	public function delete_media( $args ) {
+		$id  = $this->require_id( $args );
+		$att = get_post( $id );
+		if ( ! $att || 'attachment' !== $att->post_type ) {
+			throw new RuntimeException( 'Attachment not found.' );
+		}
+
+		$result = wp_delete_attachment( $id, ! empty( $args['force'] ) );
+
+		return array( 'id' => $id, 'deleted' => (bool) $result );
 	}
 }
