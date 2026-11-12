@@ -15,6 +15,9 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 delete_option( 'wppdt_enabled_modules' );
+delete_option( 'wppdt_mcp_settings' );
+delete_option( 'wppdt_mcp_audit' );
+delete_option( 'wppdt_mcp_oauth' );
 
 /**
  * Fires during uninstall so modules can remove their own data.

@@ -43,6 +43,14 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 	private $tools = null;
 
 	/**
+	 * OAuth authorization server.
+	 *
+	 * @since 1.3.0
+	 * @var WPPDT_MCP_OAuth|null
+	 */
+	private $oauth = null;
+
+	/**
 	 * Module directory path.
 	 *
 	 * @since 1.1.0
@@ -65,8 +73,12 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 	public function init() {
 		require_once $this->dir . 'class-wppdt-mcp-tools.php';
 		require_once $this->dir . 'class-wppdt-mcp-protocol.php';
+		require_once $this->dir . 'class-wppdt-mcp-oauth.php';
 
 		$this->build_tools();
+
+		$this->oauth = new WPPDT_MCP_OAuth( $this );
+		$this->oauth->init();
 
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 11 );
@@ -357,19 +369,38 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		$header = $request->get_header( 'authorization' );
 
 		if ( ! $header || 0 !== stripos( $header, 'bearer ' ) ) {
-			return new WP_Error( 'wppdt_mcp_unauthorized', __( 'Missing bearer token.', 'wp-pro-devs-toolkit' ), array( 'status' => 401 ) );
+			return $this->unauthorized( __( 'Missing bearer token.', 'wp-pro-devs-toolkit' ) );
 		}
 
 		$token = trim( substr( $header, 7 ) );
-		$user  = $this->verify_token( $token );
+
+		// Accept either the static admin token or an OAuth access token.
+		$user = $this->verify_token( $token );
+		if ( ! $user && $this->oauth ) {
+			$user = $this->oauth->validate_bearer( $token );
+		}
 
 		if ( ! $user ) {
-			return new WP_Error( 'wppdt_mcp_unauthorized', __( 'Invalid access token.', 'wp-pro-devs-toolkit' ), array( 'status' => 401 ) );
+			return $this->unauthorized( __( 'Invalid access token.', 'wp-pro-devs-toolkit' ) );
 		}
 
 		wp_set_current_user( $user );
 
 		return true;
+	}
+
+	/**
+	 * Builds a 401 error and points clients at the OAuth discovery metadata
+	 * (per the MCP authorization spec) via the WWW-Authenticate header.
+	 *
+	 * @param string $message Message.
+	 * @return WP_Error
+	 */
+	private function unauthorized( $message ) {
+		$metadata = home_url( '/.well-known/oauth-protected-resource' );
+		header( sprintf( 'WWW-Authenticate: Bearer resource_metadata="%s"', esc_url_raw( $metadata ) ) );
+
+		return new WP_Error( 'wppdt_mcp_unauthorized', $message, array( 'status' => 401 ) );
 	}
 
 	/**
