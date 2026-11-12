@@ -381,24 +381,26 @@ class WPPDT_MCP_Group_Elementor extends WPPDT_MCP_Tool_Group {
 }
 
 /**
- * Secure Custom Fields / Advanced Custom Fields.
+ * Advanced Custom Fields (ACF).
  *
- * Both expose the same get_field()/update_field() API.
+ * Targets ACF. Secure Custom Fields (the ACF fork maintained on WordPress.org)
+ * shares the exact same get_field()/update_field() API, so it works here
+ * automatically with no extra code.
  *
  * @since 1.1.0
  */
-class WPPDT_MCP_Group_SCF extends WPPDT_MCP_Tool_Group {
+class WPPDT_MCP_Group_ACF extends WPPDT_MCP_Tool_Group {
 
 	public function id() {
-		return 'scf';
+		return 'acf';
 	}
 
 	public function label() {
-		return __( 'Secure Custom Fields (ACF)', 'wp-pro-devs-toolkit' );
+		return __( 'Advanced Custom Fields (ACF)', 'wp-pro-devs-toolkit' );
 	}
 
 	public function requires() {
-		return 'Secure Custom Fields or ACF';
+		return 'Advanced Custom Fields (ACF)';
 	}
 
 	public function is_available() {
@@ -407,7 +409,7 @@ class WPPDT_MCP_Group_SCF extends WPPDT_MCP_Tool_Group {
 
 	public function tools() {
 		return array(
-			'scf_get_fields'   => array(
+			'acf_get_fields'   => array(
 				'description' => 'Get all custom field values for a post (Secure Custom Fields / ACF).',
 				'inputSchema' => array(
 					'type'       => 'object',
@@ -416,7 +418,7 @@ class WPPDT_MCP_Group_SCF extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'get_fields' ),
 			),
-			'scf_get_field'    => array(
+			'acf_get_field'    => array(
 				'description' => 'Get one custom field value by name or key for a post.',
 				'inputSchema' => array(
 					'type'       => 'object',
@@ -428,7 +430,7 @@ class WPPDT_MCP_Group_SCF extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'get_one' ),
 			),
-			'scf_update_field' => array(
+			'acf_update_field' => array(
 				'description' => 'Update one custom field value for a post.',
 				'inputSchema' => array(
 					'type'       => 'object',

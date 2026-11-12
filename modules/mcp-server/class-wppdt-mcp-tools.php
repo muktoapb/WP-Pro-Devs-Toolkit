@@ -60,7 +60,7 @@ class WPPDT_MCP_Tools {
 		$groups = array(
 			new WPPDT_MCP_Group_Core(),
 			new WPPDT_MCP_Group_Elementor(),
-			new WPPDT_MCP_Group_SCF(),
+			new WPPDT_MCP_Group_ACF(),
 			new WPPDT_MCP_Group_CF7(),
 			new WPPDT_MCP_Group_GravityForms(),
 		);

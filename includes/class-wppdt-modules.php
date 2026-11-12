@@ -56,13 +56,19 @@ class WPPDT_Modules {
 	 */
 	private function register_modules() {
 		$modules = array(
-			'wpvivid-subfolders' => array(
+			'wpvivid-subfolders'     => array(
 				'label'       => __( 'WPVivid Backup Subfolders', 'wp-pro-devs-toolkit' ),
 				'description' => __( 'Organize WPVivid remote backups into a per-site subfolder named after your site domain (e.g. wpvivid_backup/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, FTP and SFTP storage.', 'wp-pro-devs-toolkit' ),
 				'file'        => WPPDT_PLUGIN_DIR . 'modules/wpvivid-subfolders/class-wppdt-wpvivid-subfolders.php',
 				'class'       => 'WPPDT_WPVivid_Subfolders',
 			),
-			'mcp-server'         => array(
+			'updraftplus-subfolders' => array(
+				'label'       => __( 'UpdraftPlus Backup Subfolders', 'wp-pro-devs-toolkit' ),
+				'description' => __( 'Organize UpdraftPlus remote backups into a per-site subfolder named after your site domain (e.g. UpdraftPlus/example.com). Works with Google Drive, Dropbox, Amazon S3, S3-compatible, DreamObjects, FTP, SFTP and WebDAV storage.', 'wp-pro-devs-toolkit' ),
+				'file'        => WPPDT_PLUGIN_DIR . 'modules/updraftplus-subfolders/class-wppdt-updraftplus-subfolders.php',
+				'class'       => 'WPPDT_UpdraftPlus_Subfolders',
+			),
+			'mcp-server'             => array(
 				'label'       => __( 'MCP Server', 'wp-pro-devs-toolkit' ),
 				'description' => __( 'Expose this site to AI assistants (Claude, ChatGPT, scripts) over the Model Context Protocol so they can manage content, Elementor layouts and more. Configure and switch it on under the MCP Server submenu.', 'wp-pro-devs-toolkit' ),
 				'file'        => WPPDT_PLUGIN_DIR . 'modules/mcp-server/class-wppdt-mcp-server.php',
