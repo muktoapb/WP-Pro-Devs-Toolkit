@@ -6,7 +6,7 @@ Tags: maintenance, utilities, admin, management
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,11 @@ Manage features under the **Pro Devs Toolkit** menu in the WordPress admin.
 3. Go to **Pro Devs Toolkit** to enable the features you want.
 
 == Changelog ==
+
+= 1.0.2 =
+* MCP Server: add OAuth 2.1 authorization server, expanded tool groups (FSE, Files, Site, Users, WooCommerce, Menus, Comments, CF7 write, Gravity Forms write, media, taxonomy, install/update), and admin layout improvements.
+* Features UI: automatically disable WPVivid and UpdraftPlus subfolder toggles when their required plugin is not active.
+* Updater: point self-hosted updater to the `WP-Pro-Devs-Toolkit` repository.
 
 = 1.0.1 =
 * Feature: UpdraftPlus Backup Subfolders — organizes UpdraftPlus remote backups into a per-site subfolder.

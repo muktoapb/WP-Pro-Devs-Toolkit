@@ -3,7 +3,7 @@
  * Plugin Name:       WP Pro Devs Toolkit
  * Plugin URI:        https://wpprodevs.com/
  * Description:       A collection of common features and site enhancements used across WP ProDevs managed WordPress websites. Each feature can be enabled or disabled individually per site.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Mukto
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'WPPDT_VERSION', '1.0.1' );
+define( 'WPPDT_VERSION', '1.0.2' );
 define( 'WPPDT_PLUGIN_FILE', __FILE__ );
 define( 'WPPDT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WPPDT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
