@@ -739,6 +739,60 @@ class WPPDT_MCP_Group_CF7 extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'get_form' ),
 			),
+			'cf7_save_form'  => array(
+				'description' => 'Create or update a Contact Form 7 form. Omit "id" to create. "mail"/"messages" are objects; "form"/"additional_settings" are strings.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'                  => array( 'type' => 'integer' ),
+						'title'               => array( 'type' => 'string' ),
+						'form'                => array( 'type' => 'string', 'description' => 'The form template markup.' ),
+						'mail'                => array( 'type' => 'object' ),
+						'mail_2'              => array( 'type' => 'object' ),
+						'messages'            => array( 'type' => 'object' ),
+						'additional_settings' => array( 'type' => 'string' ),
+					),
+				),
+				'handler'     => array( $this, 'save_form' ),
+			),
+		);
+	}
+
+	public function save_form( $args ) {
+		$id = isset( $args['id'] ) ? absint( $args['id'] ) : 0;
+
+		if ( $id ) {
+			$form = WPCF7_ContactForm::get_instance( $id );
+			if ( ! $form ) {
+				throw new RuntimeException( sprintf( 'Contact Form 7 form %d not found.', $id ) );
+			}
+		} else {
+			$form = WPCF7_ContactForm::get_template();
+		}
+
+		if ( isset( $args['title'] ) ) {
+			$form->set_title( sanitize_text_field( $args['title'] ) );
+		}
+
+		$props = array();
+		foreach ( array( 'form', 'mail', 'mail_2', 'messages', 'additional_settings' ) as $key ) {
+			if ( isset( $args[ $key ] ) ) {
+				$props[ $key ] = $args[ $key ];
+			}
+		}
+		if ( $props ) {
+			$form->set_properties( $props );
+		}
+
+		$saved_id = $form->save();
+		if ( ! $saved_id ) {
+			throw new RuntimeException( 'Failed to save the Contact Form 7 form.' );
+		}
+
+		return array(
+			'id'      => (int) $saved_id,
+			'title'   => $form->title(),
+			'created' => 0 === $id,
 		);
 	}
 
@@ -1062,5 +1116,313 @@ class WPPDT_MCP_Group_Media extends WPPDT_MCP_Tool_Group {
 		$result = wp_delete_attachment( $id, ! empty( $args['force'] ) );
 
 		return array( 'id' => $id, 'deleted' => (bool) $result );
+	}
+}
+
+/**
+ * WooCommerce products & orders.
+ *
+ * @since 1.4.0
+ */
+class WPPDT_MCP_Group_WooCommerce extends WPPDT_MCP_Tool_Group {
+
+	public function id() {
+		return 'woocommerce';
+	}
+
+	public function label() {
+		return __( 'WooCommerce', 'wp-pro-devs-toolkit' );
+	}
+
+	public function requires() {
+		return 'WooCommerce';
+	}
+
+	public function is_available() {
+		return class_exists( 'WooCommerce' ) && function_exists( 'wc_get_product' );
+	}
+
+	public function tools() {
+		return array(
+			'wc_list_products'       => array(
+				'description' => 'List WooCommerce products.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'search'   => array( 'type' => 'string' ),
+						'status'   => array( 'type' => 'string' ),
+						'per_page' => array( 'type' => 'integer' ),
+						'page'     => array( 'type' => 'integer' ),
+					),
+				),
+				'handler'     => array( $this, 'list_products' ),
+			),
+			'wc_get_product'         => array(
+				'description' => 'Get a WooCommerce product by ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'get_product' ),
+			),
+			'wc_save_product'        => array(
+				'description' => 'Create (omit id) or update a simple WooCommerce product.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'                => array( 'type' => 'integer' ),
+						'name'              => array( 'type' => 'string' ),
+						'status'            => array( 'type' => 'string', 'description' => 'publish, draft, pending or private.' ),
+						'regular_price'     => array( 'type' => 'string' ),
+						'sale_price'        => array( 'type' => 'string' ),
+						'sku'               => array( 'type' => 'string' ),
+						'description'       => array( 'type' => 'string' ),
+						'short_description' => array( 'type' => 'string' ),
+						'manage_stock'      => array( 'type' => 'boolean' ),
+						'stock_quantity'    => array( 'type' => 'integer' ),
+						'featured_media'    => array( 'type' => 'integer', 'description' => 'Attachment ID for the product image.' ),
+					),
+				),
+				'handler'     => array( $this, 'save_product' ),
+			),
+			'wc_delete_product'      => array(
+				'description' => 'Delete a WooCommerce product (force=true to skip trash).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'    => array( 'type' => 'integer' ),
+						'force' => array( 'type' => 'boolean' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_product' ),
+			),
+			'wc_list_orders'         => array(
+				'description' => 'List WooCommerce orders.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'status'   => array( 'type' => 'string', 'description' => 'e.g. processing, completed, on-hold.' ),
+						'per_page' => array( 'type' => 'integer' ),
+						'page'     => array( 'type' => 'integer' ),
+					),
+				),
+				'handler'     => array( $this, 'list_orders' ),
+			),
+			'wc_get_order'           => array(
+				'description' => 'Get a WooCommerce order by ID, including line items and totals.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'get_order' ),
+			),
+			'wc_update_order_status' => array(
+				'description' => 'Update a WooCommerce order status (e.g. processing, completed, cancelled, refunded).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'     => array( 'type' => 'integer' ),
+						'status' => array( 'type' => 'string' ),
+						'note'   => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'id', 'status' ),
+				),
+				'handler'     => array( $this, 'update_order_status' ),
+			),
+		);
+	}
+
+	private function product_summary( $product ) {
+		return array(
+			'id'             => $product->get_id(),
+			'name'           => $product->get_name(),
+			'type'           => $product->get_type(),
+			'status'         => $product->get_status(),
+			'sku'            => $product->get_sku(),
+			'price'          => $product->get_price(),
+			'regular_price'  => $product->get_regular_price(),
+			'sale_price'     => $product->get_sale_price(),
+			'stock_status'   => $product->get_stock_status(),
+			'stock_quantity' => $product->get_stock_quantity(),
+			'permalink'      => $product->get_permalink(),
+		);
+	}
+
+	public function list_products( $args ) {
+		$query = array(
+			'limit'    => isset( $args['per_page'] ) ? min( 100, max( 1, absint( $args['per_page'] ) ) ) : 20,
+			'page'     => isset( $args['page'] ) ? max( 1, absint( $args['page'] ) ) : 1,
+			'paginate' => false,
+		);
+		if ( ! empty( $args['status'] ) ) {
+			$query['status'] = sanitize_key( $args['status'] );
+		}
+		if ( ! empty( $args['search'] ) ) {
+			$query['s'] = sanitize_text_field( $args['search'] );
+		}
+
+		$products = array();
+		foreach ( wc_get_products( $query ) as $product ) {
+			$products[] = $this->product_summary( $product );
+		}
+
+		return array( 'products' => $products );
+	}
+
+	public function get_product( $args ) {
+		$id      = $this->require_id( $args );
+		$product = wc_get_product( $id );
+		if ( ! $product ) {
+			throw new RuntimeException( sprintf( 'Product %d not found.', $id ) );
+		}
+
+		$data                      = $this->product_summary( $product );
+		$data['description']       = $product->get_description();
+		$data['short_description'] = $product->get_short_description();
+		$data['categories']        = wp_get_post_terms( $id, 'product_cat', array( 'fields' => 'names' ) );
+
+		return $data;
+	}
+
+	public function save_product( $args ) {
+		$id = isset( $args['id'] ) ? absint( $args['id'] ) : 0;
+
+		if ( $id ) {
+			$product = wc_get_product( $id );
+			if ( ! $product ) {
+				throw new RuntimeException( sprintf( 'Product %d not found.', $id ) );
+			}
+		} else {
+			$product = new WC_Product_Simple();
+		}
+
+		if ( isset( $args['name'] ) ) {
+			$product->set_name( sanitize_text_field( $args['name'] ) );
+		}
+		if ( isset( $args['status'] ) ) {
+			$product->set_status( sanitize_key( $args['status'] ) );
+		}
+		if ( isset( $args['regular_price'] ) ) {
+			$product->set_regular_price( (string) $args['regular_price'] );
+		}
+		if ( isset( $args['sale_price'] ) ) {
+			$product->set_sale_price( (string) $args['sale_price'] );
+		}
+		if ( isset( $args['sku'] ) ) {
+			$product->set_sku( sanitize_text_field( $args['sku'] ) );
+		}
+		if ( isset( $args['description'] ) ) {
+			$product->set_description( (string) $args['description'] );
+		}
+		if ( isset( $args['short_description'] ) ) {
+			$product->set_short_description( (string) $args['short_description'] );
+		}
+		if ( isset( $args['manage_stock'] ) ) {
+			$product->set_manage_stock( (bool) $args['manage_stock'] );
+		}
+		if ( isset( $args['stock_quantity'] ) ) {
+			$product->set_stock_quantity( absint( $args['stock_quantity'] ) );
+		}
+		if ( isset( $args['featured_media'] ) ) {
+			$product->set_image_id( absint( $args['featured_media'] ) );
+		}
+
+		$saved_id = $product->save();
+		if ( ! $saved_id ) {
+			throw new RuntimeException( 'Failed to save the product.' );
+		}
+
+		return array(
+			'id'      => (int) $saved_id,
+			'created' => 0 === $id,
+			'permalink' => get_permalink( $saved_id ),
+		);
+	}
+
+	public function delete_product( $args ) {
+		$id      = $this->require_id( $args );
+		$product = wc_get_product( $id );
+		if ( ! $product ) {
+			throw new RuntimeException( sprintf( 'Product %d not found.', $id ) );
+		}
+
+		$result = $product->delete( ! empty( $args['force'] ) );
+
+		return array( 'id' => $id, 'deleted' => (bool) $result );
+	}
+
+	public function list_orders( $args ) {
+		$query = array(
+			'limit'    => isset( $args['per_page'] ) ? min( 100, max( 1, absint( $args['per_page'] ) ) ) : 20,
+			'page'     => isset( $args['page'] ) ? max( 1, absint( $args['page'] ) ) : 1,
+			'paginate' => false,
+		);
+		if ( ! empty( $args['status'] ) ) {
+			$query['status'] = sanitize_key( $args['status'] );
+		}
+
+		$orders = array();
+		foreach ( wc_get_orders( $query ) as $order ) {
+			$orders[] = array(
+				'id'       => $order->get_id(),
+				'status'   => $order->get_status(),
+				'total'    => $order->get_total(),
+				'currency' => $order->get_currency(),
+				'customer' => $order->get_billing_email(),
+				'date'     => $order->get_date_created() ? $order->get_date_created()->date( 'c' ) : null,
+			);
+		}
+
+		return array( 'orders' => $orders );
+	}
+
+	public function get_order( $args ) {
+		$id    = $this->require_id( $args );
+		$order = wc_get_order( $id );
+		if ( ! $order ) {
+			throw new RuntimeException( sprintf( 'Order %d not found.', $id ) );
+		}
+
+		$items = array();
+		foreach ( $order->get_items() as $item ) {
+			$items[] = array(
+				'name'     => $item->get_name(),
+				'quantity' => $item->get_quantity(),
+				'total'    => $item->get_total(),
+			);
+		}
+
+		return array(
+			'id'       => $order->get_id(),
+			'status'   => $order->get_status(),
+			'total'    => $order->get_total(),
+			'currency' => $order->get_currency(),
+			'billing'  => array(
+				'name'  => trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ),
+				'email' => $order->get_billing_email(),
+				'phone' => $order->get_billing_phone(),
+			),
+			'items'    => $items,
+		);
+	}
+
+	public function update_order_status( $args ) {
+		$id     = $this->require_id( $args );
+		$status = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
+		if ( '' === $status ) {
+			throw new InvalidArgumentException( '"status" is required.' );
+		}
+		$order = wc_get_order( $id );
+		if ( ! $order ) {
+			throw new RuntimeException( sprintf( 'Order %d not found.', $id ) );
+		}
+
+		$note = isset( $args['note'] ) ? sanitize_text_field( $args['note'] ) : '';
+		$order->update_status( $status, $note );
+
+		return array( 'id' => $id, 'status' => $order->get_status() );
 	}
 }
