@@ -1,0 +1,18 @@
+{
+	"name": "wpprodevs/wp-pro-devs-toolkit",
+	"description": "Development tooling (tests) for the WP Pro Devs Toolkit plugin.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^11.0"
+	},
+	"scripts": {
+		"test": "phpunit"
+	},
+	"config": {
+		"optimize-autoloader": true
+	}
+}

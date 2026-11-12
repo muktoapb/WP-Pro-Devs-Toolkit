@@ -398,7 +398,9 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 	 */
 	private function unauthorized( $message ) {
 		$metadata = home_url( '/.well-known/oauth-protected-resource' );
-		header( sprintf( 'WWW-Authenticate: Bearer resource_metadata="%s"', esc_url_raw( $metadata ) ) );
+		if ( ! headers_sent() ) {
+			header( sprintf( 'WWW-Authenticate: Bearer resource_metadata="%s"', esc_url_raw( $metadata ) ) );
+		}
 
 		return new WP_Error( 'wppdt_mcp_unauthorized', $message, array( 'status' => 401 ) );
 	}

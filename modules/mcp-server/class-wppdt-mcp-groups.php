@@ -1892,3 +1892,217 @@ class WPPDT_MCP_Group_Comments extends WPPDT_MCP_Tool_Group {
 		return array( 'id' => $id, 'deleted' => (bool) $result );
 	}
 }
+
+/**
+ * Site Editor: block theme templates & template parts (FSE).
+ *
+ * @since 1.5.0
+ */
+class WPPDT_MCP_Group_FSE extends WPPDT_MCP_Tool_Group {
+
+	public function id() {
+		return 'fse';
+	}
+
+	public function label() {
+		return __( 'Site Editor (Block Templates)', 'wp-pro-devs-toolkit' );
+	}
+
+	public function requires() {
+		return 'A block theme';
+	}
+
+	public function is_available() {
+		return function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
+	}
+
+	public function tools() {
+		return array(
+			'list_templates'  => array(
+				'description' => 'List Site Editor templates. Set type="wp_template_part" for header/footer parts (default is page templates).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'type' => array( 'type' => 'string' ) ),
+				),
+				'handler'     => array( $this, 'list_templates' ),
+			),
+			'get_template'    => array(
+				'description' => 'Get a block template/part and its block markup by ID (e.g. "theme//index").',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'string' ),
+						'type' => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'get_template' ),
+			),
+			'save_template'   => array(
+				'description' => 'Create or customize a block template/part for the active theme. "content" is block markup; "slug" e.g. "index", "404", "header".',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'slug'    => array( 'type' => 'string' ),
+						'content' => array( 'type' => 'string' ),
+						'title'   => array( 'type' => 'string' ),
+						'type'    => array( 'type' => 'string', 'description' => 'wp_template (default) or wp_template_part.' ),
+						'area'    => array( 'type' => 'string', 'description' => 'For parts: header, footer or uncategorized.' ),
+					),
+					'required'   => array( 'slug', 'content' ),
+				),
+				'handler'     => array( $this, 'save_template' ),
+			),
+			'delete_template' => array(
+				'description' => 'Delete a user-customized template/part, reverting to the theme default. Theme-provided templates cannot be deleted.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'string' ),
+						'type' => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_template' ),
+			),
+		);
+	}
+
+	private function template_type( $args ) {
+		$type = isset( $args['type'] ) ? (string) $args['type'] : '';
+		return ( false !== strpos( $type, 'part' ) ) ? 'wp_template_part' : 'wp_template';
+	}
+
+	private function resolve( $id, $args ) {
+		$types = isset( $args['type'] ) ? array( $this->template_type( $args ) ) : array( 'wp_template', 'wp_template_part' );
+		foreach ( $types as $type ) {
+			$tpl = get_block_template( $id, $type );
+			if ( $tpl ) {
+				return array( $tpl, $type );
+			}
+		}
+		return array( null, null );
+	}
+
+	public function list_templates( $args ) {
+		$type      = $this->template_type( $args );
+		$templates = array();
+		foreach ( get_block_templates( array(), $type ) as $tpl ) {
+			$templates[] = array(
+				'id'          => $tpl->id,
+				'slug'        => $tpl->slug,
+				'title'       => $tpl->title,
+				'source'      => $tpl->source,
+				'description' => $tpl->description,
+			);
+		}
+
+		return array( 'type' => $type, 'templates' => $templates );
+	}
+
+	public function get_template( $args ) {
+		$id = isset( $args['id'] ) ? (string) $args['id'] : '';
+		if ( '' === $id ) {
+			throw new InvalidArgumentException( '"id" is required.' );
+		}
+		list( $tpl ) = $this->resolve( $id, $args );
+		if ( ! $tpl ) {
+			throw new RuntimeException( 'Template not found: ' . $id );
+		}
+
+		return array(
+			'id'      => $tpl->id,
+			'slug'    => $tpl->slug,
+			'title'   => $tpl->title,
+			'type'    => $tpl->type,
+			'source'  => $tpl->source,
+			'content' => $tpl->content,
+		);
+	}
+
+	public function save_template( $args ) {
+		$type    = $this->template_type( $args );
+		$slug    = isset( $args['slug'] ) ? sanitize_title( $args['slug'] ) : '';
+		$content = isset( $args['content'] ) ? (string) $args['content'] : '';
+		if ( '' === $slug ) {
+			throw new InvalidArgumentException( '"slug" is required.' );
+		}
+		if ( '' === $content ) {
+			throw new InvalidArgumentException( '"content" is required.' );
+		}
+
+		$theme    = get_stylesheet();
+		$title    = isset( $args['title'] ) ? sanitize_text_field( $args['title'] ) : $slug;
+		$existing = get_posts(
+			array(
+				'post_type'   => $type,
+				'name'        => $slug,
+				'post_status' => array( 'publish', 'draft', 'auto-draft' ),
+				'numberposts' => 1,
+				'tax_query'   => array(
+					array(
+						'taxonomy' => 'wp_theme',
+						'field'    => 'name',
+						'terms'    => $theme,
+					),
+				),
+			)
+		);
+
+		if ( $existing ) {
+			$post_id = $existing[0]->ID;
+			wp_update_post(
+				array(
+					'ID'           => $post_id,
+					'post_content' => $content,
+					'post_title'   => $title,
+				)
+			);
+			$created = false;
+		} else {
+			$post_id = wp_insert_post(
+				array(
+					'post_type'    => $type,
+					'post_name'    => $slug,
+					'post_title'   => $title,
+					'post_content' => $content,
+					'post_status'  => 'publish',
+				),
+				true
+			);
+			if ( is_wp_error( $post_id ) ) {
+				return $post_id;
+			}
+			wp_set_object_terms( $post_id, $theme, 'wp_theme' );
+			if ( 'wp_template_part' === $type ) {
+				$area = ! empty( $args['area'] ) ? sanitize_key( $args['area'] ) : 'uncategorized';
+				wp_set_object_terms( $post_id, $area, 'wp_template_part_area' );
+			}
+			$created = true;
+		}
+
+		return array(
+			'id'      => $theme . '//' . $slug,
+			'post_id' => (int) $post_id,
+			'created' => $created,
+		);
+	}
+
+	public function delete_template( $args ) {
+		$id = isset( $args['id'] ) ? (string) $args['id'] : '';
+		if ( '' === $id ) {
+			throw new InvalidArgumentException( '"id" is required.' );
+		}
+		list( $tpl ) = $this->resolve( $id, $args );
+		if ( ! $tpl ) {
+			throw new RuntimeException( 'Template not found: ' . $id );
+		}
+		if ( 'custom' !== $tpl->source || empty( $tpl->wp_id ) ) {
+			throw new RuntimeException( 'Only user-customized templates can be deleted; this one comes from the theme files.' );
+		}
+
+		wp_delete_post( $tpl->wp_id, true );
+
+		return array( 'id' => $id, 'deleted' => true );
+	}
+}
