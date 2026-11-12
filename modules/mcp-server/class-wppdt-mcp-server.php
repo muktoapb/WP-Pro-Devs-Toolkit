@@ -71,6 +71,33 @@ class WPPDT_MCP_Server extends WPPDT_Module {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 11 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+
+		// Let the MCP endpoint through security plugins that block the REST API
+		// for unauthenticated requests. Our endpoint still enforces its own
+		// bearer-token auth and kill switch.
+		add_filter( 'aios_whitelisted_rest_routes', array( $this, 'allow_rest_namespace' ) );
+	}
+
+	/**
+	 * Whitelists the MCP namespace with All-In-One WP Security's REST firewall.
+	 *
+	 * Harmless when AIOWPS is not installed (the filter simply never runs).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param array $routes Whitelisted route namespaces.
+	 * @return array
+	 */
+	public function allow_rest_namespace( $routes ) {
+		if ( ! is_array( $routes ) ) {
+			$routes = array();
+		}
+
+		if ( ! in_array( self::REST_NAMESPACE, $routes, true ) ) {
+			$routes[] = self::REST_NAMESPACE;
+		}
+
+		return $routes;
 	}
 
 	/* ---------------------------------------------------------------------
