@@ -66,6 +66,8 @@ class WPPDT_MCP_Tools {
 			new WPPDT_MCP_Group_CF7(),
 			new WPPDT_MCP_Group_GravityForms(),
 			new WPPDT_MCP_Group_WooCommerce(),
+			new WPPDT_MCP_Group_Menus(),
+			new WPPDT_MCP_Group_Comments(),
 			new WPPDT_MCP_Group_Files(),
 			new WPPDT_MCP_Group_Site(),
 			new WPPDT_MCP_Group_Users(),

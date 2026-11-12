@@ -894,7 +894,62 @@ class WPPDT_MCP_Group_GravityForms extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'get_entry' ),
 			),
+			'gf_save_form'    => array(
+				'description' => 'Create (omit id) or update a Gravity Forms form. "form" is the full form definition (title + fields).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'integer' ),
+						'form' => array( 'type' => 'object' ),
+					),
+					'required'   => array( 'form' ),
+				),
+				'handler'     => array( $this, 'save_form' ),
+			),
+			'gf_delete_form'  => array(
+				'description' => 'Delete a Gravity Forms form by ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_form' ),
+			),
 		);
+	}
+
+	public function save_form( $args ) {
+		$form = isset( $args['form'] ) && is_array( $args['form'] ) ? $args['form'] : null;
+		if ( ! $form ) {
+			throw new InvalidArgumentException( '"form" (object) is required.' );
+		}
+		$id = isset( $args['id'] ) ? absint( $args['id'] ) : 0;
+
+		if ( $id ) {
+			$form['id'] = $id;
+			$result     = GFAPI::update_form( $form, $id );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			return array( 'id' => $id, 'created' => false );
+		}
+
+		$new_id = GFAPI::add_form( $form );
+		if ( is_wp_error( $new_id ) ) {
+			return $new_id;
+		}
+
+		return array( 'id' => (int) $new_id, 'created' => true );
+	}
+
+	public function delete_form( $args ) {
+		$id     = $this->require_id( $args );
+		$result = GFAPI::delete_form( $id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'id' => $id, 'deleted' => (bool) $result );
 	}
 
 	public function list_forms( $args ) {
@@ -1424,5 +1479,416 @@ class WPPDT_MCP_Group_WooCommerce extends WPPDT_MCP_Tool_Group {
 		$order->update_status( $status, $note );
 
 		return array( 'id' => $id, 'status' => $order->get_status() );
+	}
+}
+
+/**
+ * Navigation menus.
+ *
+ * @since 1.5.0
+ */
+class WPPDT_MCP_Group_Menus extends WPPDT_MCP_Tool_Group {
+
+	public function id() {
+		return 'menus';
+	}
+
+	public function label() {
+		return __( 'Navigation Menus', 'wp-pro-devs-toolkit' );
+	}
+
+	public function is_available() {
+		return true;
+	}
+
+	public function tools() {
+		return array(
+			'list_menus'          => array(
+				'description' => 'List navigation menus and the theme menu locations.',
+				'inputSchema' => array( 'type' => 'object', 'properties' => new stdClass() ),
+				'handler'     => array( $this, 'list_menus' ),
+			),
+			'get_menu'            => array(
+				'description' => 'Get a navigation menu and its items by menu ID or slug.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'menu' => array( 'type' => array( 'integer', 'string' ) ) ),
+					'required'   => array( 'menu' ),
+				),
+				'handler'     => array( $this, 'get_menu' ),
+			),
+			'create_menu'         => array(
+				'description' => 'Create a navigation menu.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'name' => array( 'type' => 'string' ) ),
+					'required'   => array( 'name' ),
+				),
+				'handler'     => array( $this, 'create_menu' ),
+			),
+			'add_menu_item'       => array(
+				'description' => 'Add an item to a menu. Provide a custom "url"+"title", or link to content with "object_id"+"object" (e.g. page) + "type" (post_type/taxonomy).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu_id'   => array( 'type' => 'integer' ),
+						'title'     => array( 'type' => 'string' ),
+						'url'       => array( 'type' => 'string' ),
+						'object_id' => array( 'type' => 'integer' ),
+						'object'    => array( 'type' => 'string', 'description' => 'e.g. page, post, category.' ),
+						'type'      => array( 'type' => 'string', 'description' => 'post_type, taxonomy or custom.' ),
+						'parent'    => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'menu_id' ),
+				),
+				'handler'     => array( $this, 'add_menu_item' ),
+			),
+			'delete_menu_item'    => array(
+				'description' => 'Delete a menu item by its ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_menu_item' ),
+			),
+			'delete_menu'         => array(
+				'description' => 'Delete a navigation menu by ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_menu' ),
+			),
+			'assign_menu_location' => array(
+				'description' => 'Assign a menu to a theme menu location.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu_id'  => array( 'type' => 'integer' ),
+						'location' => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'menu_id', 'location' ),
+				),
+				'handler'     => array( $this, 'assign_location' ),
+			),
+		);
+	}
+
+	public function list_menus( $args ) {
+		$menus = array();
+		foreach ( wp_get_nav_menus() as $menu ) {
+			$menus[] = array(
+				'id'    => (int) $menu->term_id,
+				'name'  => $menu->name,
+				'slug'  => $menu->slug,
+				'count' => (int) $menu->count,
+			);
+		}
+
+		return array(
+			'menus'     => $menus,
+			'locations' => get_registered_nav_menus(),
+			'assigned'  => get_nav_menu_locations(),
+		);
+	}
+
+	public function get_menu( $args ) {
+		$menu   = isset( $args['menu'] ) ? $args['menu'] : '';
+		$object = wp_get_nav_menu_object( is_numeric( $menu ) ? (int) $menu : $menu );
+		if ( ! $object ) {
+			throw new RuntimeException( 'Menu not found.' );
+		}
+
+		$items = array();
+		foreach ( (array) wp_get_nav_menu_items( $object->term_id ) as $item ) {
+			$items[] = array(
+				'id'        => (int) $item->ID,
+				'title'     => $item->title,
+				'url'       => $item->url,
+				'type'      => $item->type,
+				'object'    => $item->object,
+				'object_id' => (int) $item->object_id,
+				'parent'    => (int) $item->menu_item_parent,
+				'order'     => (int) $item->menu_order,
+			);
+		}
+
+		return array(
+			'id'    => (int) $object->term_id,
+			'name'  => $object->name,
+			'items' => $items,
+		);
+	}
+
+	public function create_menu( $args ) {
+		$name = isset( $args['name'] ) ? sanitize_text_field( $args['name'] ) : '';
+		if ( '' === $name ) {
+			throw new InvalidArgumentException( '"name" is required.' );
+		}
+		$id = wp_create_nav_menu( $name );
+		if ( is_wp_error( $id ) ) {
+			return $id;
+		}
+
+		return array( 'id' => (int) $id, 'name' => $name );
+	}
+
+	public function add_menu_item( $args ) {
+		$menu_id = isset( $args['menu_id'] ) ? absint( $args['menu_id'] ) : 0;
+		if ( ! $menu_id || ! wp_get_nav_menu_object( $menu_id ) ) {
+			throw new RuntimeException( 'Menu not found.' );
+		}
+
+		$data = array(
+			'menu-item-title'  => isset( $args['title'] ) ? sanitize_text_field( $args['title'] ) : '',
+			'menu-item-status' => 'publish',
+		);
+		if ( ! empty( $args['url'] ) ) {
+			$data['menu-item-url']  = esc_url_raw( $args['url'] );
+			$data['menu-item-type'] = 'custom';
+		}
+		if ( ! empty( $args['object_id'] ) ) {
+			$data['menu-item-object-id'] = absint( $args['object_id'] );
+			$data['menu-item-object']    = isset( $args['object'] ) ? sanitize_key( $args['object'] ) : 'page';
+			$data['menu-item-type']      = isset( $args['type'] ) ? sanitize_key( $args['type'] ) : 'post_type';
+		}
+		if ( ! empty( $args['parent'] ) ) {
+			$data['menu-item-parent-id'] = absint( $args['parent'] );
+		}
+
+		$item_id = wp_update_nav_menu_item( $menu_id, 0, $data );
+		if ( is_wp_error( $item_id ) ) {
+			return $item_id;
+		}
+
+		return array( 'id' => (int) $item_id, 'menu_id' => $menu_id );
+	}
+
+	public function delete_menu_item( $args ) {
+		$id = $this->require_id( $args );
+		$ok = is_nav_menu_item( $id ) ? wp_delete_post( $id, true ) : false;
+		if ( ! $ok ) {
+			throw new RuntimeException( 'Menu item not found.' );
+		}
+
+		return array( 'id' => $id, 'deleted' => true );
+	}
+
+	public function delete_menu( $args ) {
+		$id     = $this->require_id( $args );
+		$result = wp_delete_nav_menu( $id );
+		if ( is_wp_error( $result ) || ! $result ) {
+			throw new RuntimeException( 'Could not delete the menu.' );
+		}
+
+		return array( 'id' => $id, 'deleted' => true );
+	}
+
+	public function assign_location( $args ) {
+		$menu_id  = isset( $args['menu_id'] ) ? absint( $args['menu_id'] ) : 0;
+		$location = isset( $args['location'] ) ? sanitize_key( $args['location'] ) : '';
+		if ( ! $menu_id || '' === $location ) {
+			throw new InvalidArgumentException( '"menu_id" and "location" are required.' );
+		}
+
+		$locations              = get_nav_menu_locations();
+		$locations[ $location ] = $menu_id;
+		set_theme_mod( 'nav_menu_locations', $locations );
+
+		return array( 'menu_id' => $menu_id, 'location' => $location );
+	}
+}
+
+/**
+ * Comments.
+ *
+ * @since 1.5.0
+ */
+class WPPDT_MCP_Group_Comments extends WPPDT_MCP_Tool_Group {
+
+	public function id() {
+		return 'comments';
+	}
+
+	public function label() {
+		return __( 'Comments', 'wp-pro-devs-toolkit' );
+	}
+
+	public function is_available() {
+		return true;
+	}
+
+	public function tools() {
+		return array(
+			'list_comments'      => array(
+				'description' => 'List comments. Filter by post_id, status (approve, hold, spam, trash) and search.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'  => array( 'type' => 'integer' ),
+						'status'   => array( 'type' => 'string' ),
+						'search'   => array( 'type' => 'string' ),
+						'per_page' => array( 'type' => 'integer' ),
+						'page'     => array( 'type' => 'integer' ),
+					),
+				),
+				'handler'     => array( $this, 'list_comments' ),
+			),
+			'get_comment'        => array(
+				'description' => 'Get a comment by ID.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'get_comment' ),
+			),
+			'create_comment'     => array(
+				'description' => 'Create a comment on a post.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'      => array( 'type' => 'integer' ),
+						'content'      => array( 'type' => 'string' ),
+						'author_name'  => array( 'type' => 'string' ),
+						'author_email' => array( 'type' => 'string' ),
+						'parent'       => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'post_id', 'content' ),
+				),
+				'handler'     => array( $this, 'create_comment' ),
+			),
+			'update_comment'     => array(
+				'description' => 'Update a comment content and/or status (approve, hold, spam, trash).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'      => array( 'type' => 'integer' ),
+						'content' => array( 'type' => 'string' ),
+						'status'  => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'update_comment' ),
+			),
+			'delete_comment'     => array(
+				'description' => 'Delete a comment (force=true to skip trash).',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'    => array( 'type' => 'integer' ),
+						'force' => array( 'type' => 'boolean' ),
+					),
+					'required'   => array( 'id' ),
+				),
+				'handler'     => array( $this, 'delete_comment' ),
+			),
+		);
+	}
+
+	private function shape( $comment ) {
+		return array(
+			'id'           => (int) $comment->comment_ID,
+			'post_id'      => (int) $comment->comment_post_ID,
+			'author'       => $comment->comment_author,
+			'author_email' => $comment->comment_author_email,
+			'content'      => $comment->comment_content,
+			'status'       => wp_get_comment_status( $comment->comment_ID ),
+			'parent'       => (int) $comment->comment_parent,
+			'date'         => $comment->comment_date_gmt,
+		);
+	}
+
+	public function list_comments( $args ) {
+		$query = array(
+			'number' => isset( $args['per_page'] ) ? min( 100, max( 1, absint( $args['per_page'] ) ) ) : 20,
+			'paged'  => isset( $args['page'] ) ? max( 1, absint( $args['page'] ) ) : 1,
+		);
+		if ( ! empty( $args['post_id'] ) ) {
+			$query['post_id'] = absint( $args['post_id'] );
+		}
+		if ( ! empty( $args['status'] ) ) {
+			$query['status'] = sanitize_key( $args['status'] );
+		}
+		if ( ! empty( $args['search'] ) ) {
+			$query['search'] = sanitize_text_field( $args['search'] );
+		}
+
+		$comments = array();
+		foreach ( get_comments( $query ) as $comment ) {
+			$comments[] = $this->shape( $comment );
+		}
+
+		return array( 'comments' => $comments );
+	}
+
+	public function get_comment( $args ) {
+		$id      = $this->require_id( $args );
+		$comment = get_comment( $id );
+		if ( ! $comment ) {
+			throw new RuntimeException( 'Comment not found.' );
+		}
+
+		return $this->shape( $comment );
+	}
+
+	public function create_comment( $args ) {
+		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : 0;
+		if ( ! $post_id || ! get_post( $post_id ) ) {
+			throw new RuntimeException( 'Post not found.' );
+		}
+		if ( ! isset( $args['content'] ) || '' === trim( (string) $args['content'] ) ) {
+			throw new InvalidArgumentException( '"content" is required.' );
+		}
+
+		$data = array(
+			'comment_post_ID'      => $post_id,
+			'comment_content'      => (string) $args['content'],
+			'comment_author'       => isset( $args['author_name'] ) ? sanitize_text_field( $args['author_name'] ) : '',
+			'comment_author_email' => isset( $args['author_email'] ) ? sanitize_email( $args['author_email'] ) : '',
+			'comment_parent'       => isset( $args['parent'] ) ? absint( $args['parent'] ) : 0,
+			'comment_approved'     => 1,
+		);
+
+		$id = wp_insert_comment( $data );
+		if ( ! $id ) {
+			throw new RuntimeException( 'Could not create the comment.' );
+		}
+
+		return array( 'id' => (int) $id, 'post_id' => $post_id );
+	}
+
+	public function update_comment( $args ) {
+		$id = $this->require_id( $args );
+		if ( ! get_comment( $id ) ) {
+			throw new RuntimeException( 'Comment not found.' );
+		}
+
+		if ( isset( $args['content'] ) ) {
+			wp_update_comment(
+				array(
+					'comment_ID'      => $id,
+					'comment_content' => (string) $args['content'],
+				)
+			);
+		}
+		if ( ! empty( $args['status'] ) ) {
+			wp_set_comment_status( $id, sanitize_key( $args['status'] ) );
+		}
+
+		return array( 'id' => $id, 'status' => wp_get_comment_status( $id ) );
+	}
+
+	public function delete_comment( $args ) {
+		$id = $this->require_id( $args );
+		if ( ! get_comment( $id ) ) {
+			throw new RuntimeException( 'Comment not found.' );
+		}
+
+		$result = wp_delete_comment( $id, ! empty( $args['force'] ) );
+
+		return array( 'id' => $id, 'deleted' => (bool) $result );
 	}
 }

@@ -416,6 +416,11 @@ class WPPDT_MCP_Group_Site extends WPPDT_MCP_Tool_Group {
 				),
 				'handler'     => array( $this, 'update_theme' ),
 			),
+			'update_core'       => array(
+				'description' => 'Update WordPress core to the latest available version (no-op if already up to date).',
+				'inputSchema' => array( 'type' => 'object', 'properties' => new stdClass() ),
+				'handler'     => array( $this, 'update_core' ),
+			),
 		);
 	}
 
@@ -664,6 +669,28 @@ class WPPDT_MCP_Group_Site extends WPPDT_MCP_Tool_Group {
 		}
 
 		return array( 'stylesheet' => $stylesheet, 'updated' => (bool) $result );
+	}
+
+	public function update_core( $args ) {
+		$this->load_upgrader_api();
+		require_once ABSPATH . 'wp-admin/includes/update.php';
+		require_once ABSPATH . 'wp-admin/includes/class-core-upgrader.php';
+
+		wp_version_check( array(), true );
+		$updates = get_core_updates();
+
+		if ( empty( $updates ) || ! isset( $updates[0] ) || 'latest' === $updates[0]->response || 'development' === $updates[0]->response ) {
+			global $wp_version;
+			return array( 'updated' => false, 'message' => 'WordPress is already up to date.', 'version' => $wp_version );
+		}
+
+		$upgrader = new Core_Upgrader( new Automatic_Upgrader_Skin() );
+		$result   = $upgrader->upgrade( $updates[0] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return array( 'updated' => true, 'version' => isset( $updates[0]->version ) ? $updates[0]->version : '' );
 	}
 }
 

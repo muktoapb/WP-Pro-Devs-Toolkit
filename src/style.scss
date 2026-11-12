@@ -39,7 +39,7 @@
 }
 
 .wppdt-mcp {
-	max-width: 1100px;
+	max-width: none;
 
 	.components-card {
 		margin-bottom: 16px;
@@ -53,12 +53,13 @@
 	}
 
 	.wppdt-mcp-main {
-		flex: 1 1 420px;
+		flex: 1 1 0;
 		min-width: 0;
 	}
 
 	.wppdt-mcp-side {
-		flex: 0 1 320px;
+		flex: 1 1 0;
+		min-width: 0;
 	}
 
 	.wppdt-mcp-field {
