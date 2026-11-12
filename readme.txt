@@ -6,7 +6,7 @@ Tags: maintenance, utilities, admin, management
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,10 @@ Manage features under the **Pro Devs Toolkit** menu in the WordPress admin.
 3. Go to **Pro Devs Toolkit** to enable the features you want.
 
 == Changelog ==
+
+= 1.0.1 =
+* Feature: UpdraftPlus Backup Subfolders — organizes UpdraftPlus remote backups into a per-site subfolder.
+* Feature: MCP Server — expose the site to AI assistants over the Model Context Protocol with individually toggleable tool groups.
 
 = 1.0.0 =
 * Initial release: modular, per-site feature toggle system with a React (wp-components) admin.
