@@ -1,7 +1,7 @@
 === WP Pro Devs Toolkit ===
 Contributors: mukto
 Author URI: https://mukto.info
-Plugin URI: https://wprodevs.com/
+Plugin URI: https://wpprodevs.com/
 Tags: maintenance, utilities, admin, management
 Requires at least: 6.0
 Tested up to: 7.1
@@ -30,4 +30,6 @@ Manage features under the **Pro Devs Toolkit** menu in the WordPress admin.
 == Changelog ==
 
 = 1.0.0 =
-* Initial release: plugin foundation with a modular, per-site feature toggle system.
+* Initial release: modular, per-site feature toggle system with a React (wp-components) admin.
+* Feature: WPVivid Backup Subfolders — organizes remote backups into a per-site subfolder.
+* Self-hosted automatic updates from the GitHub repository (Plugin Update Checker).

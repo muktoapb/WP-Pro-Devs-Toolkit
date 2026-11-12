@@ -52,6 +52,14 @@ final class WPPDT_Plugin {
 	public $rest = null;
 
 	/**
+	 * Self-hosted updater.
+	 *
+	 * @since 1.1.0
+	 * @var WPPDT_Updater|null
+	 */
+	public $updater = null;
+
+	/**
 	 * Retrieves the single plugin instance.
 	 *
 	 * @since 1.0.0
@@ -87,6 +95,7 @@ final class WPPDT_Plugin {
 		require_once WPPDT_PLUGIN_DIR . 'includes/class-wppdt-module.php';
 		require_once WPPDT_PLUGIN_DIR . 'includes/class-wppdt-modules.php';
 		require_once WPPDT_PLUGIN_DIR . 'includes/class-wppdt-rest-controller.php';
+		require_once WPPDT_PLUGIN_DIR . 'includes/class-wppdt-updater.php';
 
 		if ( is_admin() ) {
 			require_once WPPDT_PLUGIN_DIR . 'admin/class-wppdt-admin.php';
@@ -132,6 +141,8 @@ final class WPPDT_Plugin {
 		$this->modules->load();
 
 		$this->rest = new WPPDT_REST_Controller( $this->modules );
+
+		$this->updater = new WPPDT_Updater();
 
 		if ( is_admin() ) {
 			$this->admin = new WPPDT_Admin( $this->modules );
